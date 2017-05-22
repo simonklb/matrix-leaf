@@ -1,0 +1,2 @@
+# TODO register with username/password is broken upstream atm
+-e git+https://github.com/simonklb/matrix-python-sdk.git@register-tempfix#egg=matrix-client
