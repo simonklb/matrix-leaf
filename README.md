@@ -37,3 +37,16 @@ Example:
 You could also store the environment variables in a file and run:
 
     docker run -ti --env-file matrix.env simonklb/matrix-leaf
+
+## Debugging issues
+
+To read the debug.log file that is created when `MATRIX_DEBUG` is set you could
+read the file inside the container using:
+
+    docker exec -it [container id] cat debug.log
+
+If you want to read the debug log file on the host you could also mount it:
+
+    touch debug.log
+    docker run -it -e MATRIX_DEBUG=1 -v $PWD/debug.log:/debug.log \
+        simonklb/matrix-leaf
