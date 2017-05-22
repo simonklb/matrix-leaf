@@ -12,6 +12,17 @@ from .ui import ConsoleUI
 LOG = logging.getLogger(__name__)
 
 
+def user_parameter(envvar, text, password=False):
+    input_func = getpass if password else input
+
+    input_value = os.environ.get(envvar)
+
+    while not input_value:
+        input_value = input_func("{}: ".format(text))
+
+    return input_value
+
+
 def main():
     if settings.debug:
         logging.basicConfig(filename="debug.log", level=logging.DEBUG)
@@ -20,10 +31,10 @@ def main():
     else:
         logging.basicConfig(level=logging.CRITICAL)
 
-    hostname = os.environ.get("MATRIX_HOSTNAME") or input("Server hostname: ")
-    username = os.environ.get("MATRIX_USERNAME") or input("Username: ")
-    password = os.environ.get("MATRIX_PASSWORD") or getpass("Password: ")
-    room = os.environ.get("MATRIX_ROOM") or input("Room: ")
+    hostname = user_parameter("MATRIX_HOSTNAME", "Server hostname")
+    username = user_parameter("MATRIX_USERNAME", "Username")
+    password = user_parameter("MATRIX_PASSWORD", "Password", password=True)
+    room = user_parameter("MATRIX_ROOM", "Room")
 
     client = Client(hostname, ConsoleUI)
 
