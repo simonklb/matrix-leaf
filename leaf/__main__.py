@@ -1,7 +1,7 @@
 from getpass import getpass
 import logging
 import os
-from requests.exceptions import ConnectionError
+from requests.exceptions import ConnectionError, MissingSchema
 
 from matrix_client.errors import MatrixRequestError
 
@@ -51,6 +51,10 @@ def main():
         print("Server connection error")
         LOG.exception(exc)
         exit(4)
+    except MissingSchema:
+        print("The server hostname needs an URL schema. "
+              "Try 'https://{}'".format(hostname))
+        exit(5)
     finally:
         client.stop()
 
