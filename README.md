@@ -8,7 +8,7 @@ A Matrix client with simplicity in mind. This means:
 
 ## Usage
 
-    docker run -ti simonklb/matrix-leaf
+    $ docker run -ti simonklb/matrix-leaf
 
 *If your username is __not__ already registered on the server and user
 registration is enabled on the homeserver you will automatically be
@@ -30,23 +30,23 @@ automatically created.*
 
 Example:
 
-    docker run -ti -e MATRIX_HOSTNAME='https://matrix.org' \
+    $ docker run -ti -e MATRIX_HOSTNAME='https://matrix.org' \
         -e MATRIX_USERNAME='neo' -e MATRIX_ROOM='#matrix:matrix.org' \
         simonklb/matrix-leaf
 
 You could also store the environment variables in a file and run:
 
-    docker run -ti --env-file matrix.env simonklb/matrix-leaf
+    $ docker run -ti --env-file matrix.env simonklb/matrix-leaf
 
 ## Debugging issues
 
 To read the debug.log file that is created when `MATRIX_DEBUG` is set you could
 read the file inside the container using:
 
-    docker exec -it [container id] cat debug.log
+    $ docker exec -it [container id] cat debug.log
 
 If you want to read the debug log file on the host you could also mount it:
 
-    touch debug.log
-    docker run -it -e MATRIX_DEBUG=1 -v $PWD/debug.log:/debug.log \
+    $ touch debug.log
+    $ docker run -it -e MATRIX_DEBUG=1 -v $PWD/debug.log:/debug.log \
         simonklb/matrix-leaf
