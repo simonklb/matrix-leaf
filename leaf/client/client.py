@@ -43,17 +43,17 @@ class Client:
     """
     A Matrix client implementation.
 
-    :param hostname: The Matrix server hostname
-    :type hostname: str
+    :param server_url: The Matrix server URL
+    :type server_url: str
     :param UI: The user interface object
     :type UI: :class:`.ui.base.BaseUI`
     """
-    def __init__(self, hostname, UI):
-        assert hostname, "Missing hostname"
+    def __init__(self, server_url, UI):
+        assert server_url, "Missing server URL"
 
         self.room = None
 
-        self.client = MatrixClient(hostname)
+        self.client = MatrixClient(server_url)
 
         self.op_executor = OPExecutor(self._server_exception_handler)
 

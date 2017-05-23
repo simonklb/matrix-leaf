@@ -31,12 +31,12 @@ def main():
     else:
         logging.basicConfig(level=logging.CRITICAL)
 
-    hostname = user_parameter("MATRIX_HOSTNAME", "Server hostname")
+    server_url = user_parameter("MATRIX_SERVER_URL", "Server URL")
     username = user_parameter("MATRIX_USERNAME", "Username")
     password = user_parameter("MATRIX_PASSWORD", "Password", password=True)
     room = user_parameter("MATRIX_ROOM", "Room")
 
-    client = Client(hostname, ConsoleUI)
+    client = Client(server_url, ConsoleUI)
 
     try:
         client.login(username, password)
@@ -63,8 +63,8 @@ def main():
         LOG.exception(exc)
         exit(4)
     except MissingSchema:
-        print("The server hostname needs an URL schema. "
-              "Try 'https://{}'".format(hostname))
+        print("The server URL is missing a schema. "
+              "Try 'https://{}'".format(server_url))
         exit(5)
     finally:
         client.stop()

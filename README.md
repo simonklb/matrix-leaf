@@ -19,7 +19,7 @@ automatically created.*
 
 ### Available environment variables
 
-    MATRIX_HOSTNAME
+    MATRIX_SERVER_URL
     MATRIX_USERNAME
     MATRIX_PASSWORD # Be careful when using clear text passwords
     MATRIX_ROOM
@@ -30,7 +30,7 @@ automatically created.*
 
 Example:
 
-    $ docker run -ti -e MATRIX_HOSTNAME='https://matrix.org' \
+    $ docker run -ti -e MATRIX_SERVER_URL='https://matrix.org' \
         -e MATRIX_USERNAME='neo' -e MATRIX_ROOM='#matrix:matrix.org' \
         simonklb/matrix-leaf
 
