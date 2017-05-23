@@ -12,13 +12,17 @@ from .ui import ConsoleUI
 LOG = logging.getLogger(__name__)
 
 
-def user_parameter(envvar, text, password=False):
-    input_func = getpass if password else input
-
+def user_parameter(envvar, text, password=False, example=None):
     input_value = os.environ.get(envvar)
+    if input_value:
+        return input_value
+
+    input_func = getpass if password else input
+    example = " (example {})".format(example) if example else ""
+    prompt = "{}{}: ".format(text, example)
 
     while not input_value:
-        input_value = input_func("{}: ".format(text))
+        input_value = input_func(prompt)
 
     return input_value
 
@@ -31,10 +35,11 @@ def main():
     else:
         logging.basicConfig(level=logging.CRITICAL)
 
-    server_url = user_parameter("MATRIX_SERVER_URL", "Server URL")
+    server_url = user_parameter("MATRIX_SERVER_URL", "Server URL",
+                                example="https://matrix.org")
     username = user_parameter("MATRIX_USERNAME", "Username")
     password = user_parameter("MATRIX_PASSWORD", "Password", password=True)
-    room = user_parameter("MATRIX_ROOM", "Room")
+    room = user_parameter("MATRIX_ROOM", "Room", example="#matrix:matrix.org")
 
     client = Client(server_url, ConsoleUI)
 
