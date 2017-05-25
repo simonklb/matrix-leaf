@@ -109,9 +109,13 @@ class JoinHandler(RoomEventHandler):
     event_type = JOIN
 
     def parse(self):
+        nick = None
+        if "displayname" in self.event["content"]:
+            nick = self.event["content"]["displayname"]
+
         return {
             "user_id": self.event["sender"],
-            "nick": self.event["content"]["displayname"]
+            "nick": nick
         }
 
     def callback(self, user_id, nick):
