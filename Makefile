@@ -8,9 +8,9 @@ DOCKER_IMAGE := simonklb/matrix-leaf
 all: build
 
 lint:
-	flake8 $(ROOT_DIR)leaf/*
+	flake8 --exclude=*.pyc $(ROOT_DIR)leaf
 
-build:
+build: lint
 	docker build -t $(DOCKER_IMAGE):$(VERSION) $(ROOT_DIR)
 
 deploy: build
