@@ -265,10 +265,10 @@ class Client:
             self.users.add_user(user_id, nick=user["displayname"])
 
         # Restore refresh callback
-        self.users.set_modified_callback(self.ui.refresh_user_list)
+        self.users.set_modified_callback(modified_callback)
 
         # Execute an initial refresh
-        self.ui.refresh_user_list()
+        modified_callback()
 
     @command.cmd(command.CONNECT, help_msg="Reconnect to the server")
     @op(require_connection=False)
