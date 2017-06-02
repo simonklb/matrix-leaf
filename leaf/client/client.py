@@ -26,6 +26,11 @@ class LoginException(Exception):
         super().__init__("Error while logging in: {}".format(msg))
 
 
+class RegistrationException(Exception):
+    def __init__(self, msg):
+        super().__init__("Error while registering new user: {}".format(msg))
+
+
 class UsernameTakenException(Exception):
     pass
 
@@ -133,6 +138,7 @@ class Client:
                                  "Try a different one.").format(username)
                 except UsernameInvalidException as reg_exc:
                     error_msg = str(reg_exc)
+                raise RegistrationException(error_msg)
 
             raise LoginException(error_msg)
 

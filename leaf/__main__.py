@@ -6,7 +6,8 @@ from requests.exceptions import ConnectionError, InvalidSchema, MissingSchema
 from matrix_client.errors import MatrixRequestError
 
 from . import settings
-from .client import Client, LoginException, JoinRoomException
+from .client import (Client, JoinRoomException, LoginException,
+                     RegistrationException)
 from .ui import ConsoleUI
 
 LOG = logging.getLogger(__name__)
@@ -47,7 +48,8 @@ def main():
         client.login(username, password)
         client.join(room)
         client.run()
-    except LoginException as exc:
+    except (LoginException, RegistrationException) as exc:
+        print("Login failed")
         print(str(exc))
         exit(1)
     except JoinRoomException as exc:
