@@ -39,6 +39,10 @@ class UsernameInvalidException(Exception):
     pass
 
 
+class CaptchaRequiredException(Exception):
+    pass
+
+
 class JoinRoomException(Exception):
     def __init__(self, msg):
         super().__init__("Error while joining room: {}".format(msg))
@@ -102,6 +106,10 @@ class Client:
                         raise UsernameTakenException()
                     elif error_content["errcode"] == "M_INVALID_USERNAME":
                         raise UsernameInvalidException(error_content["error"])
+                    elif (error_content["errcode"] == "M_UNKNOWN" and
+                          "error" in error_content):
+                        if "captcha" in error_content["error"].lower():
+                            raise CaptchaRequiredException()
 
     def login(self, username, password):
         """
@@ -138,6 +146,9 @@ class Client:
                                  "Try a different one.").format(username)
                 except UsernameInvalidException as reg_exc:
                     error_msg = str(reg_exc)
+                except CaptchaRequiredException:
+                    error_msg = ("Captcha required for registration. Please "
+                                 "use https://riot.im/app/#/register for now")
                 raise RegistrationException(error_msg)
 
             raise LoginException(error_msg)
