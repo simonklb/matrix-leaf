@@ -1,14 +1,14 @@
 from getpass import getpass
 import logging
 import os
-from requests.exceptions import ConnectionError, InvalidSchema, MissingSchema
+from requests import exceptions as requests_exceptions
 
 from matrix_client.errors import MatrixRequestError
 
-from . import settings
-from .client import (Client, JoinRoomException, LoginException,
-                     RegistrationException)
-from .ui import ConsoleUI
+from . import settings as leaf_settings
+from . import client as leaf_client
+from .client import exceptions as leaf_exceptions
+from . import ui as leaf_ui
 
 LOG = logging.getLogger(__name__)
 
@@ -29,7 +29,7 @@ def user_parameter(envvar, text, password=False, example=None):
 
 
 def main():
-    if settings.debug:
+    if leaf_settings.debug:
         logging.basicConfig(filename="debug.log", level=logging.DEBUG)
         logging.getLogger("requests").setLevel(logging.WARN)
         logging.getLogger("urllib3").setLevel(logging.WARN)
@@ -42,37 +42,57 @@ def main():
     password = user_parameter("MATRIX_PASSWORD", "Password", password=True)
     room = user_parameter("MATRIX_ROOM", "Room", example="#matrix:matrix.org")
 
-    client = Client(server_url, ConsoleUI)
+    client = leaf_client.Client(server_url, leaf_ui.ConsoleUI)
 
     try:
-        client.login(username, password)
-        client.join(room)
+        try:
+            client.login(username, password)
+        except leaf_exceptions.LoginFailed as exc:
+            print(str(exc))
+
+            try:
+                print("Trying to register a new user")
+                client.register(username, password)
+            except leaf_exceptions.RegistrationException as exc:
+                print(str(exc))
+                exit()
+
+        except leaf_exceptions.LoginException as exc:
+            print(str(exc))
+            exit()
+
+        try:
+            client.join(room)
+        except leaf_exceptions.RoomNotFound as exc:
+            print(str(exc))
+
+            try:
+                print("Trying to create a new room")
+                client.create_room(room)
+            except Exception as exc:
+                print(str(exc))
+                exit()
+
+        except leaf_exceptions.JoinRoomException as exc:
+            print(str(exc))
+            exit()
+
         client.run()
-    except (LoginException, RegistrationException) as exc:
-        print("Login failed")
-        print(str(exc))
-        exit(1)
-    except JoinRoomException as exc:
-        print(str(exc))
-        exit(2)
     except MatrixRequestError as exc:
         LOG.exception(exc)
         print("Matrix server error")
 
-        if settings.debug:
+        if leaf_settings.debug:
             print("Check the debug log")
         else:
             print("Enable debug mode and check the log. (Use MATRIX_DEBUG=1)")
-
-        exit(3)
-    except ConnectionError as exc:
+    except requests_exceptions.ConnectionError as exc:
         print("Server connection error")
         LOG.exception(exc)
-        exit(4)
-    except (MissingSchema, InvalidSchema):
+    except (requests_exceptions.MissingSchema,
+            requests_exceptions.InvalidSchema):
         print("The server URL needs a valid schema. "
               "Did you forget to add 'https://'?")
-        exit(5)
     finally:
         client.stop()
 

@@ -1,9 +1,5 @@
-from .client import (Client, JoinRoomException, LoginException,
-                     RegistrationException)
+from .client import Client
 
 __all__ = [
-    "Client",
-    "JoinRoomException",
-    "LoginException",
-    "RegistrationException"
+    "Client"
 ]

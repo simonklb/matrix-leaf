@@ -7,7 +7,7 @@ from matrix_client.client import MatrixClient
 from matrix_client.errors import MatrixRequestError
 
 from .. import settings
-from . import command
+from . import command, exceptions
 from .op import op, OPExecutor
 from .room_event import RoomEventObserver
 from .user import Users
@@ -19,33 +19,6 @@ HISTORY_LIMIT = 100
 SERVER_TIMEOUT_MS = 5000
 
 LOG = logging.getLogger(__name__)
-
-
-class LoginException(Exception):
-    def __init__(self, msg):
-        super().__init__("Error while logging in: {}".format(msg))
-
-
-class RegistrationException(Exception):
-    def __init__(self, msg):
-        super().__init__("Error while registering new user: {}".format(msg))
-
-
-class UsernameTakenException(Exception):
-    pass
-
-
-class UsernameInvalidException(Exception):
-    pass
-
-
-class CaptchaRequiredException(Exception):
-    pass
-
-
-class JoinRoomException(Exception):
-    def __init__(self, msg):
-        super().__init__("Error while joining room: {}".format(msg))
 
 
 class Client:
@@ -83,33 +56,46 @@ class Client:
     def connected(self):
         return self.client and self.client.should_listen
 
-    def _register(self, username, password):
+    def register(self, username, password):
         """
         Register a new user on the server.
+
+        :param username: The username to register
+        :type username: str
+        :param password: The password to register
+        :type password: str
+        :raises RegistrationException:
         """
+        assert username, "Missing username"
+        assert password, "Missing password"
+
+        LOG.info("Registering user {}".format(username))
+
         try:
-            LOG.debug("Trying to register new user")
             self.client.register_with_password(username=username,
                                                password=password)
         except MatrixRequestError as exc:
             LOG.exception(exc)
 
             try:
-                error_content = json.loads(exc.content)
-            except json.decoder.JSONDecodeError:
+                content = json.loads(exc.content)
+            except json.decoder.JSONDecodeError as json_exc:
+                raise exceptions.RegistrationException(str(json_exc))
+
+            try:
+                if content["errcode"] in ("M_USER_IN_USE", "M_EXCLUSIVE"):
+                    raise exceptions.UsernameTaken(username)
+
+                if content["errcode"] == "M_INVALID_USERNAME":
+                    raise exceptions.RegistrationException(content["error"])
+
+                if content["errcode"] == "M_UNKNOWN":
+                    if content["error"] == "Captcha is required.":
+                        raise exceptions.CaptchaRequired()
+            except KeyError:
                 pass
 
-            if exc.code == 400:
-                if "errcode" in error_content:
-                    if error_content["errcode"] in ("M_USER_IN_USE",
-                                                    "M_EXCLUSIVE"):
-                        raise UsernameTakenException()
-                    elif error_content["errcode"] == "M_INVALID_USERNAME":
-                        raise UsernameInvalidException(error_content["error"])
-                    elif (error_content["errcode"] == "M_UNKNOWN" and
-                          "error" in error_content):
-                        if "captcha" in error_content["error"].lower():
-                            raise CaptchaRequiredException()
+            raise exceptions.RegistrationUnknownError(exc)
 
     def login(self, username, password):
         """
@@ -122,11 +108,12 @@ class Client:
         :type username: str
         :param password: The password to login with
         :type password: str
+        :raises LoginException:
         """
         assert username, "Missing username"
         assert password, "Missing password"
 
-        LOG.info("Trying to log in with username {}".format(username))
+        LOG.info("Login with username {}".format(username))
 
         try:
             self.client.login_with_password(username=username,
@@ -134,33 +121,34 @@ class Client:
         except MatrixRequestError as exc:
             LOG.exception(exc)
 
-            error_msg = "Unknown error, check debug log."
+            try:
+                content = json.loads(exc.content)
+            except json.decoder.JSONDecodeError as json_exc:
+                raise exceptions.LoginException(str(json_exc))
 
-            # The login attempt failed
-            if exc.code == 403:
-                try:
-                    self._register(username, password)
-                    return
-                except UsernameTakenException:
-                    error_msg = ("Username '{}' taken. "
-                                 "Try a different one.").format(username)
-                except UsernameInvalidException as reg_exc:
-                    error_msg = str(reg_exc)
-                except CaptchaRequiredException:
-                    error_msg = ("Captcha required for registration. Please "
-                                 "use https://riot.im/app/#/register for now")
-                raise RegistrationException(error_msg)
+            try:
+                if content["errcode"] == "M_FORBIDDEN":
+                    raise exceptions.LoginFailed()
+            except KeyError:
+                pass
 
-            raise LoginException(error_msg)
+            raise exceptions.LoginUnknownError(exc)
 
-    def _create_room(self, room_alias):
+    def create_room(self, room_alias):
         """
         Create a new room on the server.
+
+        :param room_alias: The alias of the room to create
+        :type room_alias: str
         """
+        assert room_alias, "Missing room"
+
+        LOG.info("Creating room {}".format(room_alias))
 
         """ #room:host -> room """
         room_alias_name = room_alias[1:].split(':')[0]
-        return self.client.create_room(room_alias_name)
+
+        self.room = self.client.create_room(room_alias_name)
 
     def join(self, room_alias):
         """
@@ -171,6 +159,7 @@ class Client:
 
         :param room_alias: The alias of the room to join
         :type room_alias: str
+        :raises JoinRoomException:
         """
         assert room_alias, "Missing room"
 
@@ -181,24 +170,21 @@ class Client:
         except MatrixRequestError as exc:
             LOG.exception(exc)
 
-            error_msg = "Unknown error, check debug log."
+            try:
+                content = json.loads(exc.content)
+            except json.decoder.JSONDecodeError as json_exc:
+                exceptions.JoinRoomException(json_exc)
 
-            # There is no mapped room ID for this room alias
-            if exc.code == 404:
-                self.room = self._create_room(room_alias)
-                return
-            else:
-                try:
-                    error_content = json.loads(exc.content)
-                    if "errcode" in error_content:
-                        if (error_content["errcode"] == "M_FORBIDDEN" or
-                            (error_content["errcode"] == "M_UNKNOWN" and
-                                "not legal" in error_content["error"])):
-                            error_msg = error_content["error"]
-                except json.decoder.JSONDecodeError:
-                    pass
+            try:
+                if content["errcode"] == "M_NOT_FOUND":
+                    raise exceptions.RoomNotFound()
 
-            raise JoinRoomException(error_msg)
+                if content["errcode"] in ("M_FORBIDDEN", "M_UNKNOWN"):
+                    raise exceptions.JoinRoomException(content["error"])
+            except (KeyError, AttributeError):
+                pass
+
+            raise exceptions.JoinRoomUnknownError(exc)
 
     def run(self):
         """
